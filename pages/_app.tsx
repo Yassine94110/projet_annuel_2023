@@ -3,23 +3,23 @@ import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import type { AppProps } from 'next/app';
 import { configureChains, createConfig, WagmiConfig } from 'wagmi';
-import { arbitrum, goerli, mainnet, optimism, polygon } from 'wagmi/chains';
+import { mainnet,sepolia, localhost,hardhat } from 'wagmi/chains';
 import { publicProvider } from 'wagmi/providers/public';
+import { Footer } from '../components/Footer'
+import { Header } from '../components/Header'
 
 const { chains, publicClient, webSocketPublicClient } = configureChains(
   [
     mainnet,
-    polygon,
-    optimism,
-    arbitrum,
-    ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'true' ? [goerli] : []),
+    sepolia,
+    hardhat,
   ],
   [publicProvider()]
 );
 
 const { connectors } = getDefaultWallets({
-  appName: 'RainbowKit App',
-  projectId: 'YOUR_PROJECT_ID',
+  appName: 'MarketplaceNessdoge',
+  projectId: 'a15ddf057071fa3c8a92c62b9beef422',
   chains,
 });
 
@@ -34,7 +34,9 @@ function MyApp({ Component, pageProps }: AppProps) {
   return (
     <WagmiConfig config={wagmiConfig}>
       <RainbowKitProvider chains={chains}>
+        <Header/>
         <Component {...pageProps} />
+        <Footer/>
       </RainbowKitProvider>
     </WagmiConfig>
   );
