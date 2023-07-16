@@ -10,8 +10,6 @@ import { Header } from '../components/Header'
 
 const { chains, publicClient, webSocketPublicClient } = configureChains(
   [
-    mainnet,
-    sepolia,
     hardhat,
   ],
   [publicProvider()]

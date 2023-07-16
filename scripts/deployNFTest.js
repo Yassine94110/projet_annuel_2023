@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
 async function main() {
-  const NFTest = await hre.ethers.deployContract("NFTest");
+  const NFTest = await hre.ethers.deployContract("NFTMarketplace");
   const nFTest = await NFTest.waitForDeployment();
   console.log("l'adresse du NFTest", nFTest.target);
 }

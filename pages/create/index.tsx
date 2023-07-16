@@ -15,11 +15,20 @@ function Create() {
   // State for tracking the uploaded NFT
   const [uploadedNFT, setUploadedNFT] = useState(null);
 
+
+  useEffect(() => {
+  if (uploadedNFT) {
+    console.log('MZAZADZAD');
+  }
+
+  }, []);
+
   // Handle NFT upload
   const handleUploadNFT = async (event: { preventDefault: () => void; target: { files: any[]; }; }) => {
     event.preventDefault();
 
     try {
+      console.log('Uploading NFT...');
       // Get the uploaded file
       const file = event.target.files[0];
 
@@ -37,7 +46,9 @@ function Create() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("oui");
         setUploadedNFT(data);
+        console.log(data);
       } else {
         console.error('Failed to upload NFT');
       }
@@ -60,17 +71,17 @@ function Create() {
               {/* NFT upload form */}
               <form>
                 <input type="file" accept="image/*" onChange={handleUploadNFT} />
-                <button type="submit">Upload NFT</button>
+                { uploadedNFT && <button type="submit">Upload NFT</button>}
               </form>
               {/* Display uploaded NFT data */}
               {uploadedNFT && (
-                <div className=''>
-                  <h2>NFT Uploaded!</h2>
-                  <p>IPFS CID: {uploadedNFT.ipfs_cid}</p>
-                  <p>URL: {uploadedNFT.ipfs_uri}</p>
-                  <img src={uploadedNFT.ipfs_uri} alt="Uploaded NFT" />
-                </div>
-              )}
+  <div className=''>
+    <h2>NFT Uploaded!</h2>
+    <p>IPFS CID: {uploadedNFT.IpfsHash}</p>
+    <p>URL: https://ipfs.io/ipfs/{uploadedNFT.IpfsHash}</p>
+    <img src={`https://ipfs.io/ipfs/${uploadedNFT.IpfsHash}`} alt="Uploaded NFT" />
+  </div>
+)}
             </div>
           </div>
         </div>

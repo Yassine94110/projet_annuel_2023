@@ -16,6 +16,8 @@ export const Header:React.FC = () => {
         [ { name: 'Accueil', link: '/' },
          { name: 'Token', link: '/token' },
          { name: 'Create', link: '/create' },
+         { name: 'Profile', link: '/profile' },
+         { name: 'Sell NFT', link: '/sellNFT' },
           {
         name: 'Swap', link: '/swap' },
          { name: 'Marketplace', link:
