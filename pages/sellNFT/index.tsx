@@ -85,7 +85,7 @@ const { data : dataCreateToken, isLoading:  isLoadingCreateToken, isSuccess:isSu
     }
 
     const nftJSON = {
-      // name,
+      name,
       // description,
       // price,
       image: fileURL,

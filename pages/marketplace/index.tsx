@@ -58,7 +58,7 @@ const {
 
 useEffect(() => {
 
-  if (getAllNFTsData && !dataFetched) {
+  if (!getAllNFTsData || !dataFetched) {
     console.log(getAllNFTsData);
     updateData(getAllNFTsData);
     updateFetched(true);

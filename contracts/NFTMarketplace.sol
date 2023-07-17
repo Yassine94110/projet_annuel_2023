@@ -8,16 +8,13 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract NFTMarketplace is ERC721URIStorage {
     using Counters for Counters.Counter;
-    //_tokenIds variable has the most recent minted tokenId
+
     Counters.Counter private _tokenIds;
-    //Keeps track of the number of items sold on the marketplace
     Counters.Counter private _itemsSold;
     //owner is the contract address that created the smart contract
     address payable owner;
-    //The fee charged by the marketplace to be allowed to list an NFT
     uint256 listPrice = 0.01 ether;
 
-    //The structure to store info about a listed token
     struct ListedToken {
         uint256 tokenId;
         address payable owner;
@@ -25,46 +22,23 @@ contract NFTMarketplace is ERC721URIStorage {
         uint256 price;
         bool currentlyListed;
     }
-
-    struct SoldToken {
+    struct eachNFT {
         uint256 tokenId;
-        address payable owner;
-        address payable seller;
-        uint256 price;
-        string name;
-        bool currentlyListed;
-    }
-    struct mintToken {
-        uint256 tokenId;
-        address payable owner;
         string name;
     }
 
-    //the event emitted when a token is successfully listed
     event TokenListedSuccess(
         uint256 indexed tokenId,
         address owner,
         address seller,
         uint256 price,
-        string name,
         bool currentlyListed
     );
-    event TokenSoldSuccess(
-        uint256 indexed tokenId,
-        address owner,
-        address seller,
-        uint256 price,
-        string name,
-        bool currentlyListed
-    );
-    event TokenMintSuccess(uint256 indexed tokenId, address owner, string name);
 
-    //This mapping maps tokenId to token info and is helpful when retrieving details about a tokenId
     mapping(uint256 => ListedToken) private idToListedToken;
-    mapping(uint256 => SoldToken) private idToSoldToken;
-    mapping(uint256 => mintToken) private idToMintToken;
+    mapping(uint256 => eachNFT) private idToNFT;
 
-    constructor() ERC721("Market Place", "MPLA") {
+    constructor() ERC721("BlueMarket", "BMRK") {
         owner = payable(msg.sender);
     }
 
@@ -96,57 +70,33 @@ contract NFTMarketplace is ERC721URIStorage {
         return _tokenIds.current();
     }
 
-    //The first time a token is created, it is listed here
     function createToken(
         string memory tokenURI,
-        string memory name
+        string memory _name
     ) public payable returns (uint) {
-        require(msg.value == listPrice, "0.01 ETH minting fee required");
-
-        //Increment the tokenId counter, which is keeping track of the number of minted NFTs
         _tokenIds.increment();
         uint256 newTokenId = _tokenIds.current();
 
-        //Mint the NFT with tokenId newTokenId to the address who called createToken
         _safeMint(msg.sender, newTokenId);
 
-        //Map the tokenId to the tokenURI (which is an IPFS URL with the NFT metadata)
         _setTokenURI(newTokenId, tokenURI);
 
-        //    idToListedToken[tokenId] = ListedToken(
-        //     newTokenId,
-        //     payable(address(this)),
-        //     payable(msg.sender),
-        //     price,
-        //     true
-        // );
-
-        idToMintToken[newTokenId] = mintToken(
+        idToListedToken[newTokenId] = ListedToken(
             newTokenId,
             payable(msg.sender),
-            name
+            payable(msg.sender),
+            0,
+            false
         );
-
-        //        struct mintToken {
-        //     uint256 tokenId;
-        //     address payable owner;
-        //     uint256 price;
-        //     string name;
-        // }
-
-        //Helper function to update Global variables and emit an event
-        // createListedToken(newTokenId, price);
+        idToNFT[newTokenId] = eachNFT(newTokenId, _name);
 
         return newTokenId;
     }
 
-    function createListedToken(uint256 tokenId, uint256 price) private {
-        //Make sure the sender sent enough ETH to pay for listing
+    function createListedToken(uint256 tokenId, uint256 price) public payable {
         require(msg.value == listPrice, "Hopefully sending the correct price");
-        //Just sanity check
         require(price > 0, "Make sure the price isn't negative");
 
-        //Update the mapping of tokenId's to Token details, useful for retrieval functions
         idToListedToken[tokenId] = ListedToken(
             tokenId,
             payable(address(this)),
@@ -162,7 +112,6 @@ contract NFTMarketplace is ERC721URIStorage {
             address(this),
             msg.sender,
             price,
-            idToMintToken[tokenId].name,
             true
         );
     }
@@ -226,7 +175,7 @@ contract NFTMarketplace is ERC721URIStorage {
         );
 
         //update the details of the token
-        idToListedToken[tokenId].currentlyListed = true;
+        idToListedToken[tokenId].currentlyListed = false;
         idToListedToken[tokenId].seller = payable(msg.sender);
         _itemsSold.increment();
 
