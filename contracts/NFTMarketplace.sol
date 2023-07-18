@@ -11,6 +11,7 @@ contract NFTMarketplace is ERC721URIStorage {
 
     Counters.Counter private _tokenIds;
     Counters.Counter private _itemsSold;
+    address payable private _owner;
     //owner is the contract address that created the smart contract
     address payable owner;
     uint256 listPrice = 0.01 ether;
@@ -21,7 +22,12 @@ contract NFTMarketplace is ERC721URIStorage {
         address payable seller;
         uint256 price;
         bool currentlyListed;
+        bool isOnAuction;
+        uint256 auctionEndTime;
+        address highestBidder;
+        uint256 highestBid;
     }
+
     struct eachNFT {
         uint256 tokenId;
         string name;
@@ -35,11 +41,34 @@ contract NFTMarketplace is ERC721URIStorage {
         bool currentlyListed
     );
 
+    event AuctionStarted(
+        uint256 indexed tokenId,
+        address owner,
+        address seller,
+        uint256 startingPrice,
+        uint256 auctionEndTime
+    );
+
+    event AuctionEnded(
+        uint256 indexed tokenId,
+        address owner,
+        address winner,
+        uint256 winningBid
+    );
+
+    event BidPlaced(uint256 indexed tokenId, address bidder, uint256 bidAmount);
+
     mapping(uint256 => ListedToken) private idToListedToken;
     mapping(uint256 => eachNFT) private idToNFT;
+    mapping(uint256 => mapping(address => uint256)) private tokenBids;
 
     constructor() ERC721("BlueMarket", "BMRK") {
-        owner = payable(msg.sender);
+        _owner = payable(msg.sender);
+    }
+
+    modifier onlyOwner() {
+        require(_owner == msg.sender, "Only owner can perform this action");
+        _;
     }
 
     function updateListPrice(uint256 _listPrice) public payable {
@@ -86,7 +115,11 @@ contract NFTMarketplace is ERC721URIStorage {
             payable(msg.sender),
             payable(msg.sender),
             0,
-            false
+            false,
+            false,
+            0,
+            address(0),
+            0
         );
         idToNFT[newTokenId] = eachNFT(newTokenId, _name);
 
@@ -102,7 +135,11 @@ contract NFTMarketplace is ERC721URIStorage {
             payable(address(this)),
             payable(msg.sender),
             price,
-            true
+            true,
+            false,
+            0,
+            address(0),
+            0
         );
 
         _transfer(msg.sender, address(this), tokenId);
@@ -179,18 +216,136 @@ contract NFTMarketplace is ERC721URIStorage {
         idToListedToken[tokenId].seller = payable(msg.sender);
         _itemsSold.increment();
 
-        //Actually transfer the token to the new owner
         _transfer(address(this), msg.sender, tokenId);
-        //approve the marketplace to sell NFTs on your behalf
         approve(address(this), tokenId);
 
-        //Transfer the listing fee to the marketplace creator
         payable(owner).transfer(listPrice);
-        //Transfer the proceeds from the sale to the seller of the NFT
         payable(seller).transfer(msg.value);
     }
 
-    //We might add a resell token function in the future
-    //In that case, tokens won't be listed by default but users can send a request to actually list a token
-    //Currently NFTs are listed by default
+    function startAuction(
+        uint256 tokenId,
+        uint256 startingPrice,
+        uint256 duration
+    ) public {
+        require(
+            ownerOf(tokenId) == msg.sender,
+            "Only the owner can start an auction"
+        );
+        require(
+            !idToListedToken[tokenId].isOnAuction,
+            "Token is already on auction"
+        );
+        require(duration > 0, "Auction duration must be greater than zero");
+
+        idToListedToken[tokenId].isOnAuction = true;
+        idToListedToken[tokenId].auctionEndTime = block.timestamp + duration;
+        idToListedToken[tokenId].seller = payable(msg.sender);
+        idToListedToken[tokenId].price = startingPrice;
+
+        _transfer(msg.sender, address(this), tokenId);
+        emit AuctionStarted(
+            tokenId,
+            msg.sender,
+            msg.sender,
+            startingPrice,
+            idToListedToken[tokenId].auctionEndTime
+        );
+    }
+
+    function placeBid(uint256 tokenId) public payable {
+        require(
+            idToListedToken[tokenId].isOnAuction,
+            "Token is not on auction"
+        );
+        require(
+            block.timestamp < idToListedToken[tokenId].auctionEndTime,
+            "Auction has ended"
+        );
+        require(msg.value > 0, "Bid amount must be greater than zero");
+
+        uint256 currentBid = tokenBids[tokenId][msg.sender];
+        require(
+            msg.value > currentBid,
+            "Bid amount must be greater than current bid"
+        );
+
+        if (currentBid > 0) {
+            payable(msg.sender).transfer(currentBid);
+        }
+
+        tokenBids[tokenId][msg.sender] = msg.value;
+
+        if (msg.value > idToListedToken[tokenId].highestBid) {
+            idToListedToken[tokenId].highestBidder = msg.sender;
+            idToListedToken[tokenId].highestBid = msg.value;
+        }
+
+        emit BidPlaced(tokenId, msg.sender, msg.value);
+    }
+
+    function endAuction(uint256 tokenId) public {
+        require(
+            idToListedToken[tokenId].isOnAuction,
+            "Token is not on auction"
+        );
+        require(
+            block.timestamp >= idToListedToken[tokenId].auctionEndTime,
+            "Auction has not ended yet"
+        );
+
+        address winner = idToListedToken[tokenId].highestBidder;
+        uint256 winningBid = idToListedToken[tokenId].highestBid;
+
+        idToListedToken[tokenId].isOnAuction = false;
+        idToListedToken[tokenId].seller.transfer(winningBid);
+
+        _transfer(address(this), winner, tokenId);
+
+        emit AuctionEnded(
+            tokenId,
+            idToListedToken[tokenId].seller,
+            winner,
+            winningBid
+        );
+    }
+
+    function getHighestBidder(uint256 tokenId) public view returns (address) {
+        return idToListedToken[tokenId].highestBidder;
+    }
+
+    function isBided(uint256 tokenId) public view returns (bool) {
+        return tokenBids[tokenId][msg.sender] > 0;
+    }
+
+    function getHighestBid(uint256 tokenId) public view returns (uint256) {
+        return idToListedToken[tokenId].highestBid;
+    }
+
+    function getAuctionEndTime(uint256 tokenId) public view returns (uint256) {
+        return idToListedToken[tokenId].auctionEndTime;
+    }
+
+    function getMyBids() public view returns (ListedToken[] memory) {
+        uint totalItemCount = _tokenIds.current();
+        uint itemCount = 0;
+        uint currentIndex = 0;
+        uint currentId;
+        for (uint i = 0; i < totalItemCount; i++) {
+            if (tokenBids[i + 1][msg.sender] > 0) {
+                itemCount += 1;
+            }
+        }
+
+        ListedToken[] memory items = new ListedToken[](itemCount);
+        for (uint i = 0; i < totalItemCount; i++) {
+            if (tokenBids[i + 1][msg.sender] > 0) {
+                currentId = i + 1;
+                ListedToken storage currentItem = idToListedToken[currentId];
+                items[currentIndex] = currentItem;
+                currentIndex += 1;
+            }
+        }
+        return items;
+    }
 }
