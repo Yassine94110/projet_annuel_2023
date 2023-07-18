@@ -223,6 +223,28 @@ contract NFTMarketplace is ERC721URIStorage {
         payable(seller).transfer(msg.value);
     }
 
+    function cancenSale(uint256 tokenId) public payable {
+        address seller = idToListedToken[tokenId].seller;
+        require(
+            true == idToListedToken[tokenId].currentlyListed,
+            "Token is not listed"
+        );
+        require(msg.sender == seller, "Only the seller can cancel the sale");
+
+        //update the details of the token
+        idToListedToken[tokenId].currentlyListed = false;
+        idToListedToken[tokenId].seller = payable(msg.sender);
+        idToListedToken[tokenId].price = 0;
+
+        _itemsSold.increment();
+
+        _transfer(address(this), msg.sender, tokenId);
+        approve(address(this), tokenId);
+
+        payable(owner).transfer(listPrice);
+        payable(seller).transfer(msg.value);
+    }
+
     function startAuction(
         uint256 tokenId,
         uint256 startingPrice,
